@@ -11,7 +11,7 @@ class Tag(models.Model):
         max_length=200, unique=True, verbose_name='Название'
     )
     slug = models.SlugField(unique=True)
-    colour_code = ColorField(
+    colour = ColorField(
         format='hexa', unique=True, verbose_name='Цветовой код'
     )
 
@@ -45,7 +45,7 @@ class Recipe(models.Model):
     name = models.CharField(max_length=200, verbose_name='Название рецепта')
     text = models.TextField(verbose_name='Описание рецепта')
     image = models.ImageField(
-        verbose_name='Изображение', upload_to='media/recipes/images/'
+        verbose_name='Изображение', upload_to='recipes/images/'
     )
     tags = models.ManyToManyField(Tag, related_name='recipes')
     ingredients = models.ManyToManyField(
@@ -95,6 +95,10 @@ class IngredientInRecipe(models.Model):
         verbose_name = 'Добавить ингредиент в рецепт'
         verbose_name_plural = 'Добавить ингредиент в рецепт'
 
+    def __str__(self):
+        return f'{self.ingredient.name}, {self.recipe.name}'
+
+
 class ShoppingCart(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='shopping_cart'
@@ -113,5 +117,14 @@ class ShoppingCart(models.Model):
             )
         ]
 
-
-
+class Follow(models.Model):
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='author',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower',
+    )

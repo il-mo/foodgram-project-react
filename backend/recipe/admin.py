@@ -48,5 +48,5 @@ class TagAdmin(admin.ModelAdmin):
     fields = (
         'name',
         'slug',
-        'colour_code',
+        'colour',
     )
