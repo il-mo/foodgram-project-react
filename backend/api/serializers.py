@@ -36,10 +36,9 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def get_is_subscribed(self, obj):
-        return (
-            obj.follower.filter(author_id=obj.id, user_id=self.context['request'].user.id)
-            .exists()
-        )
+        return Follow.objects.filter(
+            author_id=obj.id, user_id=self.context['request'].user.id
+        ).exists()
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
