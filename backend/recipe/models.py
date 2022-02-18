@@ -1,9 +1,8 @@
 from colorfield.fields import ColorField
-from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
 
-User = get_user_model()
+from foodgram import settings
 
 
 class Tag(models.Model):
@@ -37,13 +36,13 @@ class Ingredient(models.Model):
 
 class Recipe(models.Model):
     author = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='recipes',
         verbose_name='Автор',
     )
     name = models.CharField(max_length=200, verbose_name='Название рецепта')
-    text = models.TextField(verbose_name='Описание рецепта')
+    text = models.TextField(verbose_name='Описание рецепта', blank=True, null=True)
     image = models.ImageField(
         verbose_name='Изображение', upload_to='recipes/images/'
     )
@@ -80,7 +79,8 @@ class IngredientInRecipe(models.Model):
         related_name='ingredient_in_recipe',
     )
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE, related_name='ingredient_in_recipe'
+        Recipe, on_delete=models.CASCADE,
+        related_name='ingredient_in_recipe',
     )
     amount = models.PositiveSmallIntegerField(
         verbose_name="Количество ингредиентов",
@@ -94,6 +94,7 @@ class IngredientInRecipe(models.Model):
     class Meta:
         verbose_name = 'Добавить ингредиент в рецепт'
         verbose_name_plural = 'Добавить ингредиент в рецепт'
+        ordering = ('recipe', 'ingredient')
 
     def __str__(self):
         return f'{self.ingredient.name}, {self.recipe.name}'
@@ -101,7 +102,7 @@ class IngredientInRecipe(models.Model):
 
 class ShoppingCart(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='shopping_cart'
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shopping_cart'
     )
     recipe = models.ForeignKey(
         Recipe, related_name='shopping_cart', on_delete=models.CASCADE
@@ -111,20 +112,53 @@ class ShoppingCart(models.Model):
         verbose_name = 'Корзина покупок'
         verbose_name_plural = 'Корзина покупок'
 
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'recipe'], name='unique_shopping_list'
-            )
-        ]
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=['user', 'recipe'], name='unique_shopping_list'
+        #     )
+        # ]
+
 
 class Follow(models.Model):
     author = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='author',
     )
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='follower',
     )
+
+
+    class Meta:
+        verbose_name = 'Избранные авторы'
+        verbose_name_plural = 'Избранные авторы'
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name='Пользователь',
+        related_name='favorite'
+    )
+    recipe = models.ForeignKey(
+        'Recipe',
+        on_delete=models.CASCADE,
+        verbose_name='Рецепт',
+        related_name='favorite'
+    )
+    shopping_cart = models.BooleanField(
+        verbose_name='Корзина покупок',
+        default=False
+    )
+    favorite = models.BooleanField(
+        verbose_name='Избранное',
+        default=False
+    )
+
+    class Meta:
+        verbose_name = 'Добавить рецепт в избранное'
+        verbose_name_plural = 'Добавить рецепт в избранное'
