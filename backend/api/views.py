@@ -1,4 +1,5 @@
-from rest_framework import viewsets, status
+from django.http import HttpResponse
+from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import ParseError
 from rest_framework.generics import get_object_or_404
@@ -11,20 +12,20 @@ from rest_framework.response import Response
 from api.paginations import PagePagination
 from api.permissions import IsAuthor
 from api.serializers import (
+    FavoriteSerializer,
     FollowSerializer,
     IngredientSerializer,
     RecipeSerializer,
     TagSerializer,
     UserSerializer,
-    FavoriteSerializer,
 )
 from recipe.models import (
+    Favorite,
     Follow,
     Ingredient,
+    IngredientInRecipe,
     Recipe,
     Tag,
-    ShoppingCart,
-    Favorite,
 )
 from users.models import User
 
@@ -32,6 +33,7 @@ from users.models import User
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
+    pagination_class = PagePagination
 
     @action(
         methods=['GET'],
@@ -50,10 +52,16 @@ class UserViewSet(viewsets.ModelViewSet):
         url_path='subscriptions',
     )
     def show_subscriptions(self, request):
-        queryset = Follow.objects.filter(user=request.user)
-        page = self.paginate_queryset(queryset)
-        serializer = FollowSerializer(page, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        author_list = set()
+        for _ in Follow.objects.filter(
+                user_id=self.request.user.id
+        ).select_related('author'):
+            author_list.add(_.author)
+        data = self.filter_queryset(
+            User.objects.filter(id__in=[i.id for i in author_list]).all()
+        )
+        serializer = FollowSerializer(data, context=request, many=True)
+        return Response(serializer.data)
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
@@ -81,7 +89,28 @@ class RecipeViewSet(viewsets.ModelViewSet):
         url_path='download_shopping_cart',
     )
     def get_shopping_cart(self, request):
-        pass
+        data = dict()
+        recipes = Recipe.objects.filter(
+            favorite__user=self.request.user, favorite__shopping_cart=True
+        ).all()
+        if not recipes:
+            raise ParseError(
+                detail={'error': ['Ваш список покупок пустой :(']}
+            )
+        for recipe in recipes:
+            ingredients = IngredientInRecipe.objects.filter(
+                recipe=recipe
+            ).all()
+            for ingredient in ingredients:
+                if f'{ingredient.ingredient.id}' in data:
+                    data[f'{ingredient.ingredient.id}'][
+                        'amount'
+                    ] += ingredient.amount
+
+        filename = f'{self.request.user.username}_shopping_list.txt'
+        response = HttpResponse(data, content_type='text.txt; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        return response
 
     def perform_create(self, serializer):
         if 'tags' not in self.request.data:
@@ -107,49 +136,70 @@ class RecipeViewSet(viewsets.ModelViewSet):
 # recipes/(?P<id>[0-9]+)/shopping_cart'
 @api_view(['POST', 'DELETE'])
 def shopping_cart(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
-    data = ShoppingCart.objects.create(user_id=request.user.id, recipe_id=id)
-    serializer = FollowSerializer(recipe, many=True)
-    serializer.is_valid(data)
-    return Response(serializer.data)
+    _recipe = get_object_or_404(Recipe, id=id)
+    if request.method == 'POST':
+        recipe = Favorite.objects.get_or_create(
+            recipe_id=id, user_id=request.user.id
+        )[0]
+        if recipe.shopping_cart is True:
+            raise ParseError(
+                detail={'error': ['Вы уже добавили рецепт в список покупок.']}
+            )
+        else:
+            recipe.shopping_cart = True
+            recipe.save()
+        serializer = FavoriteSerializer(_recipe)
+        return Response(serializer.data)
+
+    if request.method == 'DELETE':
+        recipe = Favorite.objects.get(recipe_id=id, user_id=request.user.id)
+        if recipe.shopping_cart is False:
+            raise ParseError(
+                detail={'error': ['Рецепт не добавлен в список покупок']}
+            )
+        else:
+            recipe.shopping_cart = False
+            recipe.save()
+            return Response(
+                {'status': 'Рецепт удален из списка покупок'},
+                status=status.HTTP_200_OK,
+            )
 
 
 # recipes/(?P<id>[0-9]+)/favorite
 @api_view(['POST', 'DELETE'])
 def favorite(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
+    _recipe = get_object_or_404(Recipe, id=id)
     if request.method == 'POST':
-        add_recipe = Favorite.objects.get_or_create(
+        recipe = Favorite.objects.get_or_create(
             recipe_id=id, user_id=request.user.id
         )[0]
-        if add_recipe.favorite:
+        if recipe.favorite:
             raise ParseError(
                 detail={
                     'error': ['Рецепт уже добавлен в ваш список избранного']
                 }
             )
         else:
-            add_recipe.favorite = True
-            add_recipe.save()
-        serializer = FavoriteSerializer(recipe)
+            recipe.favorite = True
+            recipe.save()
+        serializer = FavoriteSerializer(_recipe)
         return Response(serializer.data)
 
     if request.method == 'DELETE':
-        try:
-            Favorite.objects.get(
-                recipe_id=id, user_id=request.user.id
-            ).delete()
+        recipe = Favorite.objects.get(recipe_id=id, user_id=request.user.id)
+        if recipe.favorite is False:
+            raise ParseError(
+                detail={'error': ['Рецепта нет в вашем списке избранного']}
+            )
+        else:
+            recipe.favorite = False
+            recipe.save()
             return Response(
                 {'status': 'Рецепт удален из избранного'},
                 status=status.HTTP_200_OK,
             )
-        except Exception:
-            raise ParseError(
-                detail={'error': ['Рецепта нет в вашем списке избранного']}
-            )
 
-
-# TODO:check and write_only
 
 # users/(?P<id>[0-9]+)/subscribe
 @api_view(['POST', 'DELETE'])

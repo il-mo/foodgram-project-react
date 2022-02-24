@@ -1,25 +1,17 @@
 from django.contrib import admin
 
 from .models import (Favorite, Follow, Ingredient, IngredientInRecipe, Recipe,
-                     Tag, ShoppingCart)
+                     Tag)
 
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = (
-        'pk',
-        'name',
-        'measurement_unit'
-    )
+    list_display = ('pk', 'name', 'measurement_unit')
 
 
 @admin.register(IngredientInRecipe)
 class IngredientInRecipeAdmin(admin.ModelAdmin):
-    list_display = (
-        'ingredient',
-        'recipe',
-        'amount'
-    )
+    list_display = ('ingredient', 'recipe', 'amount')
     search_fields = ('ingredient',)
     list_filter = ('ingredient',)
 
@@ -34,7 +26,7 @@ class RecipeAdmin(admin.ModelAdmin):
         'image',
         'cooking_time',
         'author',
-        'favorites'
+        'favorites',
     )
 
     @staticmethod
@@ -44,11 +36,7 @@ class RecipeAdmin(admin.ModelAdmin):
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
-    list_display = (
-        'name',
-        'slug',
-        'colour'
-    )
+    list_display = ('name', 'slug', 'colour')
     search_fields = ('name',)
     list_filter = ('slug',)
 
@@ -61,8 +49,3 @@ class FollowAdmin(admin.ModelAdmin):
 @admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = ('pk', 'user', 'recipe', 'shopping_cart', 'favorite')
-
-
-@admin.register(ShoppingCart)
-class ShoppingCartAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'user', 'recipe')

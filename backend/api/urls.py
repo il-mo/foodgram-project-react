@@ -37,9 +37,4 @@ urlpatterns = [
         views.subscribe,
         name='SubscribeView',
     ),
-    #     re_path(
-    #         r'users/subscriptions',
-    #         views.subscriptions,
-    #         name='SubscriptionsView',
-    #     ),
 ]

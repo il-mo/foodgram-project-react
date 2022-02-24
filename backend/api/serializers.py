@@ -4,11 +4,12 @@ from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 
 from recipe.models import (
+    Favorite,
+    Follow,
     Ingredient,
+    IngredientInRecipe,
     Recipe,
     Tag,
-    IngredientInRecipe,
-    Follow,
 )
 from users.models import User
 
@@ -36,8 +37,11 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def get_is_subscribed(self, obj):
+        user = self.context.get('request').user
+        if user.is_anonymous:
+            return False
         return Follow.objects.filter(
-            author_id=obj.id, user_id=self.context['request'].user.id
+            author_id=obj.id, user_id=user.id
         ).exists()
 
 
@@ -65,7 +69,6 @@ class RecipeSerializer(serializers.ModelSerializer):
     ingredients = serializers.SerializerMethodField()
     image = Base64ImageField()
     is_favorited = serializers.SerializerMethodField()
-
     is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
@@ -96,31 +99,30 @@ class RecipeSerializer(serializers.ModelSerializer):
         user = self.context.get('request').user
         if user.is_anonymous:
             return False
-        return obj.favorite.filter(recipe_id=obj.id, user_id=user.id).exists()
+        recipe = Favorite.objects.filter(
+            recipe_id=obj.id, user_id=user.id
+        ).first()
+        if recipe:
+            return recipe.favorite
+        return False
 
     def get_is_in_shopping_cart(self, obj):
         user = self.context.get('request').user
         if user.is_anonymous:
             return False
-        return obj.shopping_cart.filter(
+        recipe = Favorite.objects.filter(
             recipe_id=obj.id, user_id=user.id
-        ).exists()
-
-    # def get_is_in_shopping_cart(self, obj):
-    #     favorite = Favorite.objects.filter(
-    #         recipe_id=obj.id,
-    #         user_id=self.context['request'].user.id
-    #     )
-    #     if self.context['request'].user.is_authenticated and favorite:
-    #         return favorite[0].shopping_cart
-    #     return False
+        ).first()
+        if recipe:
+            return recipe.shopping_cart
+        return False
 
     def create(self, validated_data):
         recipe, created = Recipe.objects.update_or_create(
             name=validated_data['name'],
             author=validated_data['author'],
             text=validated_data['text'],
-            # image=validated_data['image'],
+            image=validated_data['image'],
             cooking_time=validated_data['cooking_time'],
         )
 
@@ -169,6 +171,8 @@ class FollowSerializer(serializers.ModelSerializer):
         model = User
 
     def get_is_subscribed(self, obj):
+        if self.context.user.is_anonymous:
+            return False
         return Follow.objects.filter(
             author_id=obj.id, user_id=self.context.user.id
         ).exists()

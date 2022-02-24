@@ -42,7 +42,9 @@ class Recipe(models.Model):
         verbose_name='Автор',
     )
     name = models.CharField(max_length=200, verbose_name='Название рецепта')
-    text = models.TextField(verbose_name='Описание рецепта', blank=True, null=True)
+    text = models.TextField(
+        verbose_name='Описание рецепта', blank=True, null=True
+    )
     image = models.ImageField(
         verbose_name='Изображение', upload_to='recipes/images/'
     )
@@ -79,7 +81,8 @@ class IngredientInRecipe(models.Model):
         related_name='ingredient_in_recipe',
     )
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE,
+        Recipe,
+        on_delete=models.CASCADE,
         related_name='ingredient_in_recipe',
     )
     amount = models.PositiveSmallIntegerField(
@@ -100,25 +103,6 @@ class IngredientInRecipe(models.Model):
         return f'{self.ingredient.name}, {self.recipe.name}'
 
 
-class ShoppingCart(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shopping_cart'
-    )
-    recipe = models.ForeignKey(
-        Recipe, related_name='shopping_cart', on_delete=models.CASCADE
-    )
-
-    class Meta:
-        verbose_name = 'Корзина покупок'
-        verbose_name_plural = 'Корзина покупок'
-
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=['user', 'recipe'], name='unique_shopping_list'
-        #     )
-        # ]
-
-
 class Follow(models.Model):
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -131,7 +115,6 @@ class Follow(models.Model):
         related_name='follower',
     )
 
-
     class Meta:
         verbose_name = 'Избранные авторы'
         verbose_name_plural = 'Избранные авторы'
@@ -142,23 +125,19 @@ class Favorite(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name='Пользователь',
-        related_name='favorite'
+        related_name='favorite',
     )
     recipe = models.ForeignKey(
         'Recipe',
         on_delete=models.CASCADE,
         verbose_name='Рецепт',
-        related_name='favorite'
+        related_name='favorite',
     )
+    favorite = models.BooleanField(verbose_name='Избранное', default=False)
     shopping_cart = models.BooleanField(
-        verbose_name='Корзина покупок',
-        default=False
-    )
-    favorite = models.BooleanField(
-        verbose_name='Избранное',
-        default=False
+        verbose_name='Корзина покупок', default=False
     )
 
     class Meta:
-        verbose_name = 'Добавить рецепт в избранное'
-        verbose_name_plural = 'Добавить рецепт в избранное'
+        verbose_name = 'Добавить рецепт в избранное/список покупок'
+        verbose_name_plural = 'Добавить рецепт в избранное/список покупок'
