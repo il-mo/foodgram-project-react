@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, api_view
-from rest_framework.exceptions import ParseError
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import (
     IsAuthenticated,
@@ -52,16 +52,57 @@ class UserViewSet(viewsets.ModelViewSet):
         url_path='subscriptions',
     )
     def show_subscriptions(self, request):
-        author_list = set()
-        for _ in Follow.objects.filter(
-                user_id=self.request.user.id
-        ).select_related('author'):
-            author_list.add(_.author)
+        author_ids = Follow.objects.filter(
+            user_id=self.request.user.id
+        ).values_list('author', flat=True)
         data = self.filter_queryset(
-            User.objects.filter(id__in=[i.id for i in author_list]).all()
+            User.objects.filter(id__in=author_ids).all()
         )
         serializer = FollowSerializer(data, context=request, many=True)
         return Response(serializer.data)
+
+    @action(
+        methods=['POST', 'DELETE'],
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        url_path='(?P<id>[0-9]+)/subscribe',
+    )
+    def subscribe(self, request, id):
+        author = get_object_or_404(User, id=id)
+
+        if request.method == 'POST':
+
+            if Follow.objects.filter(
+                author_id=author.id, user_id=self.request.user.id
+            ).exists():
+                raise ValidationError(
+                    detail={
+                        'error': ['Вы уже подписаны на данного пользователя']
+                    }
+                )
+            Follow.objects.create(
+                author_id=author.id, user_id=self.request.user.id
+            )
+            serializer = FollowSerializer(author, context=request)
+            return Response(serializer.data)
+
+        if request.method == 'DELETE':
+            try:
+                Follow.objects.get(
+                    author_id=author.id, user_id=self.request.user.id
+                ).delete()
+                return Response(
+                    {'status': 'Вы успешно отписались от пользователя'},
+                    status=status.HTTP_200_OK,
+                )
+            except Exception:
+                raise ValidationError(
+                    detail={
+                        'error': [
+                            'Вы не были подписаны на данного пользователя'
+                        ]
+                    }
+                )
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
@@ -83,6 +124,90 @@ class RecipeViewSet(viewsets.ModelViewSet):
     pagination_class = PagePagination
 
     @action(
+        methods=['POST', 'DELETE'],
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        url_path='(?P<id>[0-9]+)/favorite',
+    )
+    def favorite(self, request, id):
+        _recipe = get_object_or_404(Recipe, id=id)
+
+        if request.method == 'POST':
+            recipe = Favorite.objects.get_or_create(
+                recipe_id=id, user_id=self.request.user.id
+            )[0]
+            if recipe.favorite:
+                raise ValidationError(
+                    detail={
+                        'error': [
+                            'Рецепт уже добавлен в ваш список избранного'
+                        ]
+                    }
+                )
+            else:
+                recipe.favorite = True
+                recipe.save()
+            serializer = FavoriteSerializer(_recipe)
+            return Response(serializer.data)
+
+        if request.method == 'DELETE':
+            recipe = Favorite.objects.get(
+                recipe_id=id, user_id=self.request.user.id
+            )
+            if recipe.favorite is False:
+                raise ValidationError(
+                    detail={'error': ['Рецепта нет в вашем списке избранного']}
+                )
+            else:
+                recipe.favorite = False
+                recipe.save()
+                return Response(
+                    {'status': 'Рецепт удален из избранного'},
+                    status=status.HTTP_200_OK,
+                )
+
+    @action(
+        methods=['GET'],
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        url_path='(?P<id>[0-9]+)/shopping_cart',
+    )
+    def shopping_cart(self, request, id):
+        _recipe = get_object_or_404(Recipe, id=id)
+
+        if request.method == 'POST':
+            recipe = Favorite.objects.get_or_create(
+                recipe_id=id, user_id=self.request.user.id
+            )[0]
+            if recipe.shopping_cart is True:
+                raise ValidationError(
+                    detail={
+                        'error': ['Вы уже добавили рецепт в список покупок.']
+                    }
+                )
+            else:
+                recipe.shopping_cart = True
+                recipe.save()
+            serializer = FavoriteSerializer(_recipe)
+            return Response(serializer.data)
+
+        if request.method == 'DELETE':
+            recipe = Favorite.objects.get(
+                recipe_id=id, user_id=self.request.user.id
+            )
+            if recipe.shopping_cart is False:
+                raise ValidationError(
+                    detail={'error': ['Рецепт не добавлен в список покупок']}
+                )
+            else:
+                recipe.shopping_cart = False
+                recipe.save()
+                return Response(
+                    {'status': 'Рецепт удален из списка покупок'},
+                    status=status.HTTP_200_OK,
+                )
+
+    @action(
         methods=['GET'],
         detail=False,
         permission_classes=[IsAuthenticated],
@@ -94,7 +219,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             favorite__user=self.request.user, favorite__shopping_cart=True
         ).all()
         if not recipes:
-            raise ParseError(
+            raise ValidationError(
                 detail={'error': ['Ваш список покупок пустой :(']}
             )
         for recipe in recipes:
@@ -114,7 +239,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if 'tags' not in self.request.data:
-            raise ParseError(
+            raise ValidationError(
                 detail={'tags': ['Это поле обязательно к заполнению']}
             )
         tag_id = self.request.data['tags']
@@ -123,7 +248,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         if 'tags' not in self.request.data:
-            raise ParseError(
+            raise ValidationError(
                 detail={'tags': ['Это поле обязательно к заполнению']}
             )
         tag_id = self.request.data['tags']
@@ -131,97 +256,3 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         instance.delete()
-
-
-# recipes/(?P<id>[0-9]+)/shopping_cart'
-@api_view(['POST', 'DELETE'])
-def shopping_cart(request, id):
-    _recipe = get_object_or_404(Recipe, id=id)
-    if request.method == 'POST':
-        recipe = Favorite.objects.get_or_create(
-            recipe_id=id, user_id=request.user.id
-        )[0]
-        if recipe.shopping_cart is True:
-            raise ParseError(
-                detail={'error': ['Вы уже добавили рецепт в список покупок.']}
-            )
-        else:
-            recipe.shopping_cart = True
-            recipe.save()
-        serializer = FavoriteSerializer(_recipe)
-        return Response(serializer.data)
-
-    if request.method == 'DELETE':
-        recipe = Favorite.objects.get(recipe_id=id, user_id=request.user.id)
-        if recipe.shopping_cart is False:
-            raise ParseError(
-                detail={'error': ['Рецепт не добавлен в список покупок']}
-            )
-        else:
-            recipe.shopping_cart = False
-            recipe.save()
-            return Response(
-                {'status': 'Рецепт удален из списка покупок'},
-                status=status.HTTP_200_OK,
-            )
-
-
-# recipes/(?P<id>[0-9]+)/favorite
-@api_view(['POST', 'DELETE'])
-def favorite(request, id):
-    _recipe = get_object_or_404(Recipe, id=id)
-    if request.method == 'POST':
-        recipe = Favorite.objects.get_or_create(
-            recipe_id=id, user_id=request.user.id
-        )[0]
-        if recipe.favorite:
-            raise ParseError(
-                detail={
-                    'error': ['Рецепт уже добавлен в ваш список избранного']
-                }
-            )
-        else:
-            recipe.favorite = True
-            recipe.save()
-        serializer = FavoriteSerializer(_recipe)
-        return Response(serializer.data)
-
-    if request.method == 'DELETE':
-        recipe = Favorite.objects.get(recipe_id=id, user_id=request.user.id)
-        if recipe.favorite is False:
-            raise ParseError(
-                detail={'error': ['Рецепта нет в вашем списке избранного']}
-            )
-        else:
-            recipe.favorite = False
-            recipe.save()
-            return Response(
-                {'status': 'Рецепт удален из избранного'},
-                status=status.HTTP_200_OK,
-            )
-
-
-# users/(?P<id>[0-9]+)/subscribe
-@api_view(['POST', 'DELETE'])
-def subscribe(request, id):
-    author = get_object_or_404(User, id=id)
-    if request.method == 'POST':
-        Follow.objects.create(author_id=author.id, user_id=request.user.id)
-        serializer = FollowSerializer(author, context=request)
-        return Response(serializer.data)
-
-    if request.method == 'DELETE':
-        try:
-            Follow.objects.get(
-                author_id=author.id, user_id=request.user.id
-            ).delete()
-            return Response(
-                {'status': 'Вы успешно отписались от пользователя'},
-                status=status.HTTP_200_OK,
-            )
-        except Exception:
-            raise ParseError(
-                detail={
-                    'error': ['Вы не были подписаны на данного пользователя']
-                }
-            )

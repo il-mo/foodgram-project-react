@@ -1,7 +1,6 @@
 from django.db.models import F
-from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import ValidationError
 
 from recipe.models import (
     Favorite,
@@ -67,7 +66,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     ingredients = serializers.SerializerMethodField()
-    image = Base64ImageField()
+    # image = Base64ImageField()
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -80,7 +79,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             'is_favorited',
             'is_in_shopping_cart',
             'name',
-            'image',
+            # 'image',
             'text',
             'cooking_time',
         )
@@ -118,22 +117,17 @@ class RecipeSerializer(serializers.ModelSerializer):
         return False
 
     def create(self, validated_data):
-        recipe, created = Recipe.objects.update_or_create(
-            name=validated_data['name'],
-            author=validated_data['author'],
-            text=validated_data['text'],
-            image=validated_data['image'],
-            cooking_time=validated_data['cooking_time'],
-        )
+        tag_ids = Tag.objects.all().values_list('id', flat=True)
+        tag_id = self.context.get('request').data['tags']
 
-        for tag_id in validated_data['tags']:
-            try:
-                tag = Tag.objects.get(id=tag_id)
-            except Exception:
-                raise ParseError(
+        for id in tag_id:
+            if id not in tag_ids:
+                raise ValidationError(
                     detail={'tags': ['Такого тэга не существует :(']}
                 )
-        recipe.tags.add(tag)
+
+        recipe = super(RecipeSerializer, self).create(validated_data)
+
         for ingredient in self.initial_data['ingredients']:
             try:
                 get_ingredient = Ingredient.objects.get(id=ingredient['id'])
@@ -142,8 +136,8 @@ class RecipeSerializer(serializers.ModelSerializer):
                     ingredient=get_ingredient,
                     amount=ingredient['amount'],
                 )
-            except Exception:
-                raise ParseError(
+            except Ingredient.DoesNotExist:
+                raise ValidationError(
                     detail={
                         'ingredients': ['Такого ингредиента не существует :(']
                     }
@@ -180,7 +174,11 @@ class FollowSerializer(serializers.ModelSerializer):
     def get_recipes(self, obj):
         if 'recipes_limit' in self.context.GET:
             count = int(self.context.GET['recipes_limit'])
-            recipes = Recipe.objects.filter(author_id=obj.id).all()[:count]
+            recipes = (
+                Recipe.objects.filter(author_id=obj.id)
+                .all()
+                .prefetch_related(count)
+            )
         else:
             recipes = Recipe.objects.filter(author_id=obj.id).all()
         return FavoriteSerializer(recipes, many=True).data

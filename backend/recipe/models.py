@@ -14,6 +14,10 @@ class Tag(models.Model):
         format='hexa', unique=True, verbose_name='Цветовой код'
     )
 
+    class Meta:
+        verbose_name = 'Тег'
+        verbose_name_plural = 'Теги'
+
     def __str__(self):
         return self.name
 
@@ -26,12 +30,12 @@ class Ingredient(models.Model):
         max_length=200, verbose_name='Единицы измерения'
     )
 
-    def __str__(self):
-        return f'{self.name}, {self.measurement_unit}'
-
     class Meta:
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
+
+    def __str__(self):
+        return f'{self.name}, {self.measurement_unit}'
 
 
 class Recipe(models.Model):
@@ -65,13 +69,13 @@ class Recipe(models.Model):
         'Дата создания', auto_now_add=True, db_index=True
     )
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         ordering = ('-pub_date',)
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
+
+    def __str__(self):
+        return self.name
 
 
 class IngredientInRecipe(models.Model):
@@ -118,6 +122,12 @@ class Follow(models.Model):
     class Meta:
         verbose_name = 'Избранные авторы'
         verbose_name_plural = 'Избранные авторы'
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'], name='unique_follow_users'
+            )
+        ]
 
 
 class Favorite(models.Model):
