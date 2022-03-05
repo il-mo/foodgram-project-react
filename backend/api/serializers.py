@@ -1,4 +1,5 @@
-from django.db.models import F
+from django.db.models import Exists, F
+from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -40,7 +41,7 @@ class UserSerializer(serializers.ModelSerializer):
         if user.is_anonymous:
             return False
         return Follow.objects.filter(
-            author_id=obj.id, user_id=user.id
+            author_id=obj.id, user_id=self.context.user.id
         ).exists()
 
 
@@ -66,7 +67,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     ingredients = serializers.SerializerMethodField()
-    # image = Base64ImageField()
+    image = Base64ImageField()
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -79,7 +80,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             'is_favorited',
             'is_in_shopping_cart',
             'name',
-            # 'image',
+            'image',
             'text',
             'cooking_time',
         )

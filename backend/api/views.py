@@ -35,6 +35,31 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     pagination_class = PagePagination
 
+    # def get_queryset(self):
+    #
+    #     queryset = Follow.objects.filter(user=self.request.user, author=author)
+    #
+    #     queryset = Follow.objects.all()
+    #     author = self.request.query_params.get('author')
+    #     is_subscribed = queryset.filter(user=self.request.user, author=author)
+    #     return User.objects.annotate(is_subscribed=Exists(is_subscribed))
+    #
+    #     author_ids = Follow.objects.filter(user=self.request.user).values_list(
+    #         'id', flat=True
+    #     )
+    #
+    #     for id in author_ids:
+    #         query = Follow.objects.filter(
+    #             user_id=self.request.user.id, author_id=id
+    #         )
+    #
+    #         return User.objects.annotate(is_subscribed=Subquery(query))
+    #
+    #     query = Follow.objects.filter(user_id=self.request.user.id).values(
+    #         'author'
+    #     )
+    #     return User.objects.annotate(is_subscribed=Subquery(query))
+
     @action(
         methods=['GET'],
         detail=False,
@@ -122,6 +147,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthor]
     pagination_class = PagePagination
+
+    # def get_queryset(self):
+    #     is_favorite = Favorite.objects.filter(user=self.request.user).values('recipes').first()
+    #     return Recipe.objects.all().annotate(is_favorite=Exists(is_favorite))
 
     @action(
         methods=['POST', 'DELETE'],
@@ -213,7 +242,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAuthenticated],
         url_path='download_shopping_cart',
     )
-    def get_shopping_cart(self, request):
+    def get_shopping_cart(self):
         data = dict()
         recipes = Recipe.objects.filter(
             favorite__user=self.request.user, favorite__shopping_cart=True
