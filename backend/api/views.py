@@ -286,6 +286,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                         'amount'
                     ] += ingredient.amount
 
+        data = dict(sorted(data.items(), key=lambda item: item[1]['name']))
         return get_pdf(data)
 
     def perform_create(self, serializer):
