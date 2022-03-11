@@ -1,4 +1,3 @@
-from django.http import HttpResponse
 from djoser.views import UserViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -30,6 +29,7 @@ from recipe.models import (
     Tag,
 )
 from users.models import User
+from utils.to_pdf import get_pdf
 
 
 class CustomUserViewSet(UserViewSet):
@@ -144,14 +144,14 @@ class CustomUserViewSet(UserViewSet):
 
     @action(detail=False, permission_classes=[IsAuthenticated])
     def subscriptions(self, request):
-        user = request.user
-        queryset = Follow.objects.filter(user=user)
-        pages = self.paginate_queryset(queryset)
-        serializer = FollowSerializer(
-            pages,
-            many=True,
-            context={'request': request}
+        author_ids = Follow.objects.filter(
+            user_id=self.request.user.id
+        ).values_list('author', flat=True)
+        data = self.filter_queryset(
+            User.objects.filter(id__in=author_ids).all()
         )
+        page = self.paginate_queryset(data)
+        serializer = FollowSerializer(page, context={'request': request}, many=True)
         return self.get_paginated_response(serializer.data)
 
 
@@ -221,7 +221,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 )
 
     @action(
-        methods=['GET'],
+        methods=['POST', 'DELETE'],
         detail=False,
         permission_classes=[IsAuthenticated],
         url_path='(?P<id>[0-9]+)/shopping_cart',
@@ -262,7 +262,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 )
 
     @action(
-        methods=['POST'],
+        methods=['GET'],
         detail=False,
         permission_classes=[IsAuthenticated],
         url_path='download_shopping_cart',
@@ -274,7 +274,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         ).all()
         if not recipes:
             raise ValidationError(
-                detail={'error': ['Ваш список покупок пустой :(']}
+                detail={'error': ['Ваш список покупок пуст :(']}
             )
         for recipe in recipes:
             ingredients = IngredientInRecipe.objects.filter(
@@ -286,10 +286,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                         'amount'
                     ] += ingredient.amount
 
-        filename = f'{self.request.user.username}_shopping_list.txt'
-        response = HttpResponse(data, content_type='text.txt; charset=utf-8')
-        response['Content-Disposition'] = f'attachment; filename={filename}'
-        return response
+        return get_pdf(data)
 
     def perform_create(self, serializer):
         if 'tags' not in self.request.data:

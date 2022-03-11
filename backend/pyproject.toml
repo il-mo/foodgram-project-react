@@ -22,6 +22,7 @@ six = "1.15.0"
 flake8 = "^4.0.1"
 django-colorfield = "^0.6.3"
 django-extra-fields = "^3.0.2"
+reportlab = "^3.6.8"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
