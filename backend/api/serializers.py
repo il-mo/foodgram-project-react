@@ -1,6 +1,8 @@
+from django.contrib.auth import get_user_model
 from django.db.models import F
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
+from users.serializers import CustomUserSerializer
 from rest_framework.exceptions import ValidationError, ParseError
 
 from recipe.models import (
@@ -12,38 +14,6 @@ from recipe.models import (
     Tag,
 )
 from users.models import User
-
-
-class UserSerializer(serializers.ModelSerializer):
-    is_subscribed = serializers.SerializerMethodField()
-
-    class Meta:
-        fields = (
-            'email',
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
-            'password',
-        )
-        model = User
-        extra_kwargs = {'password': {'write_only': True}}
-
-    def create(self, validated_data):
-        user = User.objects.create(**validated_data)
-        user.set_password(validated_data['password'])
-        user.save()
-        return user
-
-    def get_is_subscribed(self, obj):
-        user = self.context.get('request').user
-        if user.is_anonymous:
-            return False
-        return Follow.objects.filter(
-            author_id=obj.id, user_id=user.id
-        ).exists()
-
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
@@ -64,8 +34,11 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    tags = TagSerializer(many=True)
+    author = CustomUserSerializer(read_only=True)
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(),
+        many=True
+    )
     ingredients = serializers.SerializerMethodField()
     image = Base64ImageField()
     is_favorited = serializers.SerializerMethodField()
@@ -117,34 +90,88 @@ class RecipeSerializer(serializers.ModelSerializer):
             return recipe.shopping_cart
         return False
 
+    def validate(self, data):
+        ingredients = data['ingredients']
+        tags = data['tags']
+        data_list = []
+        for ingredient in ingredients:
+            if ingredient['amount'] <= 0:
+                raise serializers.ValidationError('INGREDIENT_MORE_ZERO')
+            if ingredient in data_list:
+                raise serializers.ValidationError('INGREDIENT_ADDED')
+            else:
+                data_list.append(ingredient)
+        for tag in tags:
+            if tag in data_list:
+                raise serializers.ValidationError('TAG_ADDED')
+            else:
+                data_list.append(tag)
+        if data['cooking_time'] <= 0:
+            raise serializers.ValidationError('COOKING_TIME_MORE_ZERO')
+        del data_list
+        data['ingredients'] = ingredients
+        data['tags'] = tags
+        return data
+
+    def add_ingredients(self, instance, **validated_data):
+        ingredients = validated_data['ingredients']
+        for ingredient in ingredients:
+            IngredientInRecipe.objects.create(
+                recipe=instance,
+                ingredient_id=ingredient['id'],
+                amount=ingredient['amount']
+            )
+        return instance
+
     def create(self, validated_data):
-        tag_ids = Tag.objects.all().values_list('id', flat=True)
-        tag_id = self.context.get('request').data['tags']
+        ingredients = validated_data.pop('ingredients')
+        tags = validated_data.pop('tags')
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags)
+        return self.add_ingredients(
+            recipe,
+            ingredients=ingredients,
+        )
 
-        for id in tag_id:
-            if id not in tag_ids:
-                raise ValidationError(
-                    detail={'tags': ['Такого тэга не существует :(']}
-                )
-
-        recipe = super(RecipeSerializer, self).create(validated_data)
-
-        for ingredient in self.initial_data['ingredients']:
-            try:
-                get_ingredient = Ingredient.objects.get(id=ingredient['id'])
-                IngredientInRecipe.objects.update_or_create(
-                    recipe=recipe,
-                    ingredient=get_ingredient,
-                    amount=ingredient['amount'],
-                )
-            except Ingredient.DoesNotExist:
-                raise ValidationError(
-                    detail={
-                        'ingredients': ['Такого ингредиента не существует :(']
-                    }
-                )
-
-        return recipe
+    def update(self, instance, validated_data):
+        instance.ingredients.clear()
+        instance.tags.clear()
+        ingredients = validated_data.pop('ingredients')
+        tags = validated_data.pop('tags')
+        instance.tags.set(tags)
+        instance = self.add_ingredients(
+            instance,
+            ingredients=ingredients,
+        )
+        return super().update(instance)
+    # def create(self, validated_data):
+    #     tag_ids = Tag.objects.all().values_list('id', flat=True)
+    #     tag_id = self.context.get('request').data['tags']
+    #
+    #     for id in tag_id:
+    #         if id not in tag_ids:
+    #             raise ValidationError(
+    #                 detail={'tags': ['Такого тэга не существует :(']}
+    #             )
+    #
+    #     recipe = super(RecipeSerializer, self).create(validated_data)
+    #
+    #     for ingredient in self.initial_data['ingredients']:
+    #         try:
+    #             get_ingredient = Ingredient.objects.get(id=ingredient['id'])
+    #             IngredientInRecipe.objects.update_or_create(
+    #                 recipe=recipe,
+    #                 ingredient=get_ingredient,
+    #                 amount=ingredient['amount'],
+    #             )
+    #         except Ingredient.DoesNotExist:
+    #             raise ValidationError(
+    #                 detail={
+    #                     'ingredients': ['Такого ингредиента не существует :(']
+    #                 }
+    #             )
+    #
+    #     return recipe
         # recipe, created = Recipe.objects.update_or_create(
         #     name=validated_data['name'],
         #     author=validated_data['author'],

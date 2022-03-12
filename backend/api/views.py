@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from djoser.views import UserViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -18,7 +20,7 @@ from api.serializers import (
     IngredientSerializer,
     RecipeSerializer,
     TagSerializer,
-    UserSerializer,
+    CustomUserSerializer,
 )
 from recipe.models import (
     Favorite,
@@ -28,131 +30,11 @@ from recipe.models import (
     Recipe,
     Tag,
 )
-from users.models import User
 from utils.to_pdf import get_pdf
 
+User = get_user_model()
 
-class CustomUserViewSet(UserViewSet):
-    serializer_class = UserSerializer
-    queryset = User.objects.all()
-    pagination_class = PagePagination
 
-    # @action(
-    #     methods=['GET'],
-    #     detail=False,
-    #     permission_classes=[IsAuthenticated],
-    #     url_path='me',
-    # )
-    # def show_profile(self, request):
-    #     serializer = self.get_serializer(request.user)
-    #     return Response(serializer.data)
-    #
-    # @action(
-    #     methods=['GET'],
-    #     detail=False,
-    #     permission_classes=[IsAuthenticated],
-    #     url_path='subscriptions',
-    # )
-    # def show_subscriptions(self, request):
-    #     author_ids = Follow.objects.filter(
-    #         user_id=self.request.user.id
-    #     ).values_list('author', flat=True)
-    #     data = self.filter_queryset(
-    #         User.objects.filter(id__in=author_ids).all()
-    #     )
-    #     page = self.paginate_queryset(data)
-    #     serializer = FollowSerializer(page, context=request, many=True)
-    #     if page is not None:
-    #         return self.get_paginated_response(serializer.data)
-    #     return Response(serializer.data, {'filter': filter})
-    #
-    # @action(
-    #     methods=['POST', 'DELETE'],
-    #     detail=False,
-    #     permission_classes=[IsAuthenticated],
-    #     url_path='(?P<id>[0-9]+)/subscribe',
-    # )
-    # def subscribe(self, request, id):
-    #     author = get_object_or_404(User, id=id)
-    #
-    #     if request.method == 'POST':
-    #
-    #         if Follow.objects.filter(
-    #                 author_id=author.id, user_id=self.request.user.id
-    #         ).exists():
-    #             raise ValidationError(
-    #                 detail={
-    #                     'error': ['Вы уже подписаны на данного пользователя']
-    #                 }
-    #             )
-    #         Follow.objects.create(
-    #             author_id=author.id, user_id=self.request.user.id
-    #         )
-    #         serializer = FollowSerializer(author, context=request)
-    #         return Response(serializer.data)
-    #
-    #     if request.method == 'DELETE':
-    #         try:
-    #             Follow.objects.get(
-    #                 author_id=author.id, user_id=self.request.user.id
-    #             ).delete()
-    #             return Response(
-    #                 {'status': 'Вы успешно отписались от пользователя'},
-    #                 status=status.HTTP_200_OK,
-    #             )
-    #         except Exception:
-    #             raise ValidationError(
-    #                 detail={
-    #                     'error': [
-    #                         'Вы не были подписаны на данного пользователя'
-    #                     ]
-    #                 }
-    #             )
-    @action(detail=True, permission_classes=[IsAuthenticated], methods=['POST', 'DELETE'])
-    def subscribe(self, request, id=None):
-        user = request.user
-        author = get_object_or_404(User, id=id)
-        if request.method == 'POST':
-            if user == author:
-                return Response({
-                    'errors': 'Вы не можете подписываться на самого себя'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            if Follow.objects.filter(user=user, author=author).exists():
-                return Response({
-                    'errors': 'Вы уже подписаны на данного пользователя'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            follow = Follow.objects.create(user=user, author=author)
-            serializer = FollowSerializer(
-                follow, context={'request': request}
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        if request.method == 'DELETE':
-            if user == author:
-                return Response({
-                    'errors': 'Вы не можете отписываться от самого себя'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            follow = Follow.objects.filter(user=user, author=author)
-            if follow.exists():
-                follow.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
-
-            return Response({
-                'errors': 'Вы уже отписались'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, permission_classes=[IsAuthenticated])
-    def subscriptions(self, request):
-        author_ids = Follow.objects.filter(
-            user_id=self.request.user.id
-        ).values_list('author', flat=True)
-        data = self.filter_queryset(
-            User.objects.filter(id__in=author_ids).all()
-        )
-        page = self.paginate_queryset(data)
-        serializer = FollowSerializer(page, context={'request': request}, many=True)
-        return self.get_paginated_response(serializer.data)
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
@@ -173,9 +55,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     pagination_class = PagePagination
     filterset_class = RecipeFilter
 
-    # def get_queryset(self):
-    #     is_favorite = Favorite.objects.filter(user=self.request.user, recipe_id=OuterRef('id'))
-    #     return self.queryset.annotate(is_favorite=Exists(is_favorite))
 
     @action(
         methods=['POST', 'DELETE'],
@@ -262,7 +141,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 )
 
     @action(
-        methods=['GET'],
+        methods=['POST'],
         detail=False,
         permission_classes=[IsAuthenticated],
         url_path='download_shopping_cart',
