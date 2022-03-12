@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.paginations import PagePagination
-from api.permissions import IsAdminOrReadOnly, IsAuthor
+from api.permissions import IsAuthor
 from api.serializers import (
     FavoriteSerializer,
     IngredientSerializer,
@@ -27,14 +27,12 @@ User = get_user_model()
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    permission_classes = IsAdminOrReadOnly
     filterset_class = IngredientFilter
 
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = IsAdminOrReadOnly
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
