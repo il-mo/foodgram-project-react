@@ -1,40 +1,23 @@
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
-from djoser.views import UserViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import (
-    IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
-)
+from rest_framework.permissions import (IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 
-from api.filters import RecipeFilter, IngredientFilter
+from api.filters import IngredientFilter, RecipeFilter
 from api.paginations import PagePagination
 from api.permissions import IsAuthor
-from api.serializers import (
-    FavoriteSerializer,
-    FollowSerializer,
-    IngredientSerializer,
-    RecipeSerializer,
-    TagSerializer,
-    CustomUserSerializer,
-)
-from recipe.models import (
-    Favorite,
-    Follow,
-    Ingredient,
-    IngredientInRecipe,
-    Recipe,
-    Tag,
-)
+from api.serializers import (FavoriteSerializer,
+                             IngredientSerializer,
+                             RecipeSerializer, TagSerializer)
+from recipe.models import (Favorite, Ingredient, IngredientInRecipe,
+                           Recipe, Tag)
 from utils.to_pdf import get_pdf
 
 User = get_user_model()
-
-
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
@@ -54,7 +37,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthor]
     pagination_class = PagePagination
     filterset_class = RecipeFilter
-
 
     @action(
         methods=['POST', 'DELETE'],
@@ -141,12 +123,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 )
 
     @action(
-        methods=['POST'],
+        methods=['GET'],
         detail=False,
         permission_classes=[IsAuthenticated],
         url_path='download_shopping_cart',
     )
-    def get_shopping_cart(self):
+    def get_shopping_cart(self, request):
         data = dict()
         recipes = Recipe.objects.filter(
             favorite__user=self.request.user, favorite__shopping_cart=True
@@ -164,6 +146,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     data[f'{ingredient.ingredient.id}'][
                         'amount'
                     ] += ingredient.amount
+                else:
+                    data.update(
+                        {
+                            f'{ingredient.ingredient.id}': {
+                                'name': ingredient.ingredient.name,
+                                'measurement_unit':
+                                    ingredient.ingredient.measurement_unit,
+                                'amount': ingredient.amount
+                            }
+                        }
+                    )
 
         data = dict(sorted(data.items(), key=lambda item: item[1]['name']))
         return get_pdf(data)

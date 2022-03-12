@@ -7,8 +7,7 @@ from rest_framework.response import Response
 
 from api.paginations import PagePagination
 from api.serializers import FollowSerializer
-from recipe.models import Follow
-from users.models import User
+from users.models import Follow, User
 from users.serializers import CustomUserSerializer
 
 
@@ -141,4 +140,3 @@ class CustomUserViewSet(UserViewSet):
             page, context={'request': request}, many=True
         )
         return self.get_paginated_response(serializer.data)
-

@@ -2,18 +2,13 @@ from django.contrib.auth import get_user_model
 from django.db.models import F
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from users.serializers import CustomUserSerializer
-from rest_framework.exceptions import ValidationError, ParseError
+from rest_framework.exceptions import ParseError, ValidationError
 
-from recipe.models import (
-    Favorite,
-    Follow,
-    Ingredient,
-    IngredientInRecipe,
-    Recipe,
-    Tag,
-)
-from users.models import User
+from recipe.models import (Favorite, Ingredient, IngredientInRecipe,
+                           Recipe, Tag)
+from users.models import User, Follow
+from users.serializers import CustomUserSerializer
+
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
@@ -36,8 +31,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 class RecipeSerializer(serializers.ModelSerializer):
     author = CustomUserSerializer(read_only=True)
     tags = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(),
-        many=True
+        queryset=Tag.objects.all(), many=True
     )
     ingredients = serializers.SerializerMethodField()
     image = Base64ImageField()
@@ -119,7 +113,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             IngredientInRecipe.objects.create(
                 recipe=instance,
                 ingredient_id=ingredient['id'],
-                amount=ingredient['amount']
+                amount=ingredient['amount'],
             )
         return instance
 
@@ -144,6 +138,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             ingredients=ingredients,
         )
         return super().update(instance)
+
     # def create(self, validated_data):
     #     tag_ids = Tag.objects.all().values_list('id', flat=True)
     #     tag_id = self.context.get('request').data['tags']
@@ -172,39 +167,40 @@ class RecipeSerializer(serializers.ModelSerializer):
     #             )
     #
     #     return recipe
-        # recipe, created = Recipe.objects.update_or_create(
-        #     name=validated_data['name'],
-        #     author=validated_data['author'],
-        #     text=validated_data['text'],
-        #     image=validated_data['image'],
-        #     cooking_time=validated_data['cooking_time'],
-        #
-        # )
-        # for tag_id in validated_data['tags']:
-        #     try:
-        #         tag = Tag.objects.get(id=tag_id)
-        #     except Exception:
-        #         raise ParseError(
-        #             detail={'tags': ['Такого тэга не существует :(']}
-        #         )
-        # recipe.tags.add(tag)
-        #
-        # for ingredient in self.initial_data['ingredients']:
-        #     try:
-        #         get_ingredient = Ingredient.objects.get(id=ingredient['id'])
-        #         IngredientInRecipe.objects.update_or_create(
-        #             recipe=recipe,
-        #             ingredient=get_ingredient,
-        #             amount=ingredient['amount'],
-        #         )
-        #     except Exception:
-        #         raise ParseError(
-        #             detail={
-        #                 'ingredients': ['Такого ингредиента не существует :(']
-        #             }
-        #         )
-        #
-        # return recipe
+    # recipe, created = Recipe.objects.update_or_create(
+    #     name=validated_data['name'],
+    #     author=validated_data['author'],
+    #     text=validated_data['text'],
+    #     image=validated_data['image'],
+    #     cooking_time=validated_data['cooking_time'],
+    #
+    # )
+    # for tag_id in validated_data['tags']:
+    #     try:
+    #         tag = Tag.objects.get(id=tag_id)
+    #     except Exception:
+    #         raise ParseError(
+    #             detail={'tags': ['Такого тэга не существует :(']}
+    #         )
+    # recipe.tags.add(tag)
+    #
+    # for ingredient in self.initial_data['ingredients']:
+    #     try:
+    #         get_ingredient = Ingredient.objects.get(id=ingredient['id'])
+    #         IngredientInRecipe.objects.update_or_create(
+    #             recipe=recipe,
+    #             ingredient=get_ingredient,
+    #             amount=ingredient['amount'],
+    #         )
+    #     except Exception:
+    #         raise ParseError(
+    #             detail={
+    #                 'ingredients': ['Такого ингредиента не существует :(']
+    #             }
+    #         )
+    #
+    # return recipe
+
 
 class FollowSerializer(serializers.ModelSerializer):
     recipes = serializers.SerializerMethodField()

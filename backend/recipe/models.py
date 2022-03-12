@@ -107,29 +107,6 @@ class IngredientInRecipe(models.Model):
         return f'{self.ingredient.name}, {self.recipe.name}'
 
 
-class Follow(models.Model):
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='author',
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='follower',
-    )
-
-    class Meta:
-        verbose_name = 'Избранные авторы'
-        verbose_name_plural = 'Избранные авторы'
-
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'author'], name='unique_follow_users'
-            )
-        ]
-
-
 class Favorite(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
