@@ -1,181 +1,48 @@
-from djoser.views import UserViewSet
+from django.contrib.auth import get_user_model
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import (
     IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
+    IsAuthenticatedOrReadOnly, AllowAny,
 )
 from rest_framework.response import Response
 
-from api.filters import RecipeFilter, IngredientFilter
+from api.filters import IngredientFilter, RecipeFilter
 from api.paginations import PagePagination
 from api.permissions import IsAuthor
 from api.serializers import (
     FavoriteSerializer,
-    FollowSerializer,
     IngredientSerializer,
     RecipeSerializer,
     TagSerializer,
-    UserSerializer,
 )
-from recipe.models import (
-    Favorite,
-    Follow,
-    Ingredient,
-    IngredientInRecipe,
-    Recipe,
-    Tag,
-)
-from users.models import User
+from recipe.models import Favorite, Ingredient, IngredientInRecipe, Recipe, Tag
 from utils.to_pdf import get_pdf
 
-
-class CustomUserViewSet(UserViewSet):
-    serializer_class = UserSerializer
-    queryset = User.objects.all()
-    pagination_class = PagePagination
-
-    # @action(
-    #     methods=['GET'],
-    #     detail=False,
-    #     permission_classes=[IsAuthenticated],
-    #     url_path='me',
-    # )
-    # def show_profile(self, request):
-    #     serializer = self.get_serializer(request.user)
-    #     return Response(serializer.data)
-    #
-    # @action(
-    #     methods=['GET'],
-    #     detail=False,
-    #     permission_classes=[IsAuthenticated],
-    #     url_path='subscriptions',
-    # )
-    # def show_subscriptions(self, request):
-    #     author_ids = Follow.objects.filter(
-    #         user_id=self.request.user.id
-    #     ).values_list('author', flat=True)
-    #     data = self.filter_queryset(
-    #         User.objects.filter(id__in=author_ids).all()
-    #     )
-    #     page = self.paginate_queryset(data)
-    #     serializer = FollowSerializer(page, context=request, many=True)
-    #     if page is not None:
-    #         return self.get_paginated_response(serializer.data)
-    #     return Response(serializer.data, {'filter': filter})
-    #
-    # @action(
-    #     methods=['POST', 'DELETE'],
-    #     detail=False,
-    #     permission_classes=[IsAuthenticated],
-    #     url_path='(?P<id>[0-9]+)/subscribe',
-    # )
-    # def subscribe(self, request, id):
-    #     author = get_object_or_404(User, id=id)
-    #
-    #     if request.method == 'POST':
-    #
-    #         if Follow.objects.filter(
-    #                 author_id=author.id, user_id=self.request.user.id
-    #         ).exists():
-    #             raise ValidationError(
-    #                 detail={
-    #                     'error': ['Вы уже подписаны на данного пользователя']
-    #                 }
-    #             )
-    #         Follow.objects.create(
-    #             author_id=author.id, user_id=self.request.user.id
-    #         )
-    #         serializer = FollowSerializer(author, context=request)
-    #         return Response(serializer.data)
-    #
-    #     if request.method == 'DELETE':
-    #         try:
-    #             Follow.objects.get(
-    #                 author_id=author.id, user_id=self.request.user.id
-    #             ).delete()
-    #             return Response(
-    #                 {'status': 'Вы успешно отписались от пользователя'},
-    #                 status=status.HTTP_200_OK,
-    #             )
-    #         except Exception:
-    #             raise ValidationError(
-    #                 detail={
-    #                     'error': [
-    #                         'Вы не были подписаны на данного пользователя'
-    #                     ]
-    #                 }
-    #             )
-    @action(detail=True, permission_classes=[IsAuthenticated], methods=['POST', 'DELETE'])
-    def subscribe(self, request, id=None):
-        user = request.user
-        author = get_object_or_404(User, id=id)
-        if request.method == 'POST':
-            if user == author:
-                return Response({
-                    'errors': 'Вы не можете подписываться на самого себя'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            if Follow.objects.filter(user=user, author=author).exists():
-                return Response({
-                    'errors': 'Вы уже подписаны на данного пользователя'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            follow = Follow.objects.create(user=user, author=author)
-            serializer = FollowSerializer(
-                follow, context={'request': request}
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        if request.method == 'DELETE':
-            if user == author:
-                return Response({
-                    'errors': 'Вы не можете отписываться от самого себя'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            follow = Follow.objects.filter(user=user, author=author)
-            if follow.exists():
-                follow.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
-
-            return Response({
-                'errors': 'Вы уже отписались'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, permission_classes=[IsAuthenticated])
-    def subscriptions(self, request):
-        author_ids = Follow.objects.filter(
-            user_id=self.request.user.id
-        ).values_list('author', flat=True)
-        data = self.filter_queryset(
-            User.objects.filter(id__in=author_ids).all()
-        )
-        page = self.paginate_queryset(data)
-        serializer = FollowSerializer(page, context={'request': request}, many=True)
-        return self.get_paginated_response(serializer.data)
+User = get_user_model()
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
+    permission_classes = AllowAny
     filterset_class = IngredientFilter
 
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    # permission_classes = AllowAny
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    serializer_class = RecipeSerializer
     queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthor]
     pagination_class = PagePagination
     filterset_class = RecipeFilter
-
-    # def get_queryset(self):
-    #     is_favorite = Favorite.objects.filter(user=self.request.user, recipe_id=OuterRef('id'))
-    #     return self.queryset.annotate(is_favorite=Exists(is_favorite))
 
     @action(
         methods=['POST', 'DELETE'],
@@ -267,7 +134,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAuthenticated],
         url_path='download_shopping_cart',
     )
-    def get_shopping_cart(self):
+    def get_shopping_cart(self, request):
         data = dict()
         recipes = Recipe.objects.filter(
             favorite__user=self.request.user, favorite__shopping_cart=True
@@ -285,6 +152,16 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     data[f'{ingredient.ingredient.id}'][
                         'amount'
                     ] += ingredient.amount
+                else:
+                    data.update(
+                        {
+                            f'{ingredient.ingredient.id}': {
+                                'name': ingredient.ingredient.name,
+                                'measurement_unit': ingredient.ingredient.measurement_unit,
+                                'amount': ingredient.amount,
+                            }
+                        }
+                    )
 
         data = dict(sorted(data.items(), key=lambda item: item[1]['name']))
         return get_pdf(data)

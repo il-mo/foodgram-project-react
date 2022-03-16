@@ -1,71 +1,34 @@
 from django.db.models import F
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError, ParseError
+from rest_framework.exceptions import ValidationError
 
-from recipe.models import (
-    Favorite,
-    Follow,
-    Ingredient,
-    IngredientInRecipe,
-    Recipe,
-    Tag,
-)
-from users.models import User
-
-
-class UserSerializer(serializers.ModelSerializer):
-    is_subscribed = serializers.SerializerMethodField()
-
-    class Meta:
-        fields = (
-            'email',
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
-            'password',
-        )
-        model = User
-        extra_kwargs = {'password': {'write_only': True}}
-
-    def create(self, validated_data):
-        user = User.objects.create(**validated_data)
-        user.set_password(validated_data['password'])
-        user.save()
-        return user
-
-    def get_is_subscribed(self, obj):
-        user = self.context.get('request').user
-        if user.is_anonymous:
-            return False
-        return Follow.objects.filter(
-            author_id=obj.id, user_id=user.id
-        ).exists()
+from recipe.models import Favorite, Ingredient, IngredientInRecipe, Recipe, Tag
+from users.models import Follow, User
+from users.serializers import CustomUserSerializer
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = ('id', 'name', 'image', 'cooking_time')
+        fields = '__all__'
         model = Recipe
 
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = ('id', 'name', 'colour', 'slug')
+        fields = '__all__'
         model = Tag
 
 
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = ('id', 'name', 'measurement_unit')
+        fields = '__all__'
         model = Ingredient
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    tags = TagSerializer(many=True)
+    author = CustomUserSerializer(read_only=True)
+    tags = TagSerializer(read_only=True, many=True)
     ingredients = serializers.SerializerMethodField()
     image = Base64ImageField()
     is_favorited = serializers.SerializerMethodField()
@@ -145,39 +108,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 )
 
         return recipe
-        # recipe, created = Recipe.objects.update_or_create(
-        #     name=validated_data['name'],
-        #     author=validated_data['author'],
-        #     text=validated_data['text'],
-        #     image=validated_data['image'],
-        #     cooking_time=validated_data['cooking_time'],
-        #
-        # )
-        # for tag_id in validated_data['tags']:
-        #     try:
-        #         tag = Tag.objects.get(id=tag_id)
-        #     except Exception:
-        #         raise ParseError(
-        #             detail={'tags': ['Такого тэга не существует :(']}
-        #         )
-        # recipe.tags.add(tag)
-        #
-        # for ingredient in self.initial_data['ingredients']:
-        #     try:
-        #         get_ingredient = Ingredient.objects.get(id=ingredient['id'])
-        #         IngredientInRecipe.objects.update_or_create(
-        #             recipe=recipe,
-        #             ingredient=get_ingredient,
-        #             amount=ingredient['amount'],
-        #         )
-        #     except Exception:
-        #         raise ParseError(
-        #             detail={
-        #                 'ingredients': ['Такого ингредиента не существует :(']
-        #             }
-        #         )
-        #
-        # return recipe
+
 
 class FollowSerializer(serializers.ModelSerializer):
     recipes = serializers.SerializerMethodField()
@@ -210,8 +141,8 @@ class FollowSerializer(serializers.ModelSerializer):
             count = int(self.context.GET['recipes_limit'])
             recipes = (
                 Recipe.objects.filter(author_id=obj.id)
-                .all()
-                .prefetch_related(count)
+                    .all()
+                    .prefetch_related(count)
             )
         except AttributeError:
             recipes = Recipe.objects.filter(author_id=obj.id).all()

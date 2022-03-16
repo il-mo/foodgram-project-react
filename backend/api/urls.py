@@ -1,29 +1,15 @@
 from django.urls import include, path
-from djoser import views as djoser_views
 from rest_framework.routers import DefaultRouter
 
-from .views import (
-    IngredientViewSet,
-    RecipeViewSet,
-    TagViewSet,
-    CustomUserViewSet,
-)
+from api.views import IngredientViewSet, RecipeViewSet, TagViewSet
 
-router_v1 = DefaultRouter()
+app_name = 'api'
 
-router_v1.register('tags', TagViewSet, basename='tags')
-router_v1.register('recipes', RecipeViewSet, basename='recipes')
-router_v1.register('ingredients', IngredientViewSet, basename='ingredients')
-
-router_v1.register('users', CustomUserViewSet, basename='users')
+router = DefaultRouter()
+router.register('tags', TagViewSet, basename='tags')
+router.register('ingredients', IngredientViewSet, basename='ingredients')
+router.register('recipes', RecipeViewSet, basename='recipes')
 
 urlpatterns = [
-    path(
-        'users/set_password/',
-        djoser_views.UserViewSet.as_view({'post': 'set_password'}),
-        name='userSetPassword',
-    ),
-    path('', include(router_v1.urls)),
-    path('auth/', include('djoser.urls')),
-    path('auth/', include('djoser.urls.authtoken')),
+    path('', include(router.urls)),
 ]

@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from foodgram import settings
+
 
 class User(AbstractUser):
     ADMIN = 'admin'
@@ -34,3 +36,26 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Follow(models.Model):
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='author',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='follower',
+    )
+
+    class Meta:
+        verbose_name = 'Избранные авторы'
+        verbose_name_plural = 'Избранные авторы'
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'], name='unique_follow_users'
+            )
+        ]
