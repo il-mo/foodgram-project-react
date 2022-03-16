@@ -21,11 +21,7 @@ class RecipeFilter(django_filters.FilterSet):
     )
 
     def filter_favorite(self, queryset, name, value):
-        if self.request.user.is_anonymous:
-            raise ParseError(
-                detail={'error': ['For this action, log in is required.']}
-            )
-        if value is True:
+        if value:
             return queryset.filter(
                 favorite__user=self.request.user, **{name: True}
             ).all()

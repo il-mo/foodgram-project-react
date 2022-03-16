@@ -1,5 +1,4 @@
 from django.db.models import F
-from django.db.models import F
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -11,19 +10,19 @@ from users.serializers import CustomUserSerializer
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = ('id', 'name', 'image', 'cooking_time')
+        fields = '__all__'
         model = Recipe
 
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = ('id', 'name', 'colour', 'slug')
+        fields = '__all__'
         model = Tag
 
 
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = ('id', 'name', 'measurement_unit')
+        fields = '__all__'
         model = Ingredient
 
 

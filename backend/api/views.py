@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import (
     IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
+    IsAuthenticatedOrReadOnly, AllowAny,
 )
 from rest_framework.response import Response
 
@@ -27,12 +27,14 @@ User = get_user_model()
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
+    permission_classes = AllowAny
     filterset_class = IngredientFilter
 
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    # permission_classes = AllowAny
 
 
 class RecipeViewSet(viewsets.ModelViewSet):

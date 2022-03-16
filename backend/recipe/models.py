@@ -9,12 +9,13 @@ class Tag(models.Model):
     name = models.CharField(
         max_length=200, unique=True, verbose_name='Название'
     )
-    slug = models.SlugField(unique=True)
-    colour = ColorField(
-        format='hexa', unique=True, verbose_name='Цветовой код'
+    color = ColorField(
+        format='hex', unique=True, verbose_name='Цветовой код'
     )
+    slug = models.SlugField(unique=True)
 
     class Meta:
+        ordering = ['-id']
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
 
@@ -31,8 +32,13 @@ class Ingredient(models.Model):
     )
 
     class Meta:
+        ordering = ['-id']
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'measurement_unit'],
+                                    name='unique ingredient')
+        ]
 
     def __str__(self):
         return f'{self.name}, {self.measurement_unit}'
@@ -70,7 +76,7 @@ class Recipe(models.Model):
     )
 
     class Meta:
-        ordering = ('-pub_date',)
+        ordering = ['-id']
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
 
@@ -99,9 +105,9 @@ class IngredientInRecipe(models.Model):
     )
 
     class Meta:
+        ordering = ['-id']
         verbose_name = 'Добавить ингредиент в рецепт'
         verbose_name_plural = 'Добавить ингредиент в рецепт'
-        ordering = ('recipe', 'ingredient')
 
     def __str__(self):
         return f'{self.ingredient.name}, {self.recipe.name}'
@@ -126,5 +132,6 @@ class Favorite(models.Model):
     )
 
     class Meta:
+        ordering = ['-id']
         verbose_name = 'Добавить рецепт в избранное/список покупок'
         verbose_name_plural = 'Добавить рецепт в избранное/список покупок'
