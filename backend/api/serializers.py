@@ -141,8 +141,8 @@ class FollowSerializer(serializers.ModelSerializer):
             count = int(self.context.GET['recipes_limit'])
             recipes = (
                 Recipe.objects.filter(author_id=obj.id)
-                    .all()
-                    .prefetch_related(count)
+                .all()
+                .prefetch_related(count)
             )
         except AttributeError:
             recipes = Recipe.objects.filter(author_id=obj.id).all()
