@@ -25,9 +25,9 @@ jobs:
 #        pip install "poetry==1.1.12"
 #        poetry config virtualenvs.create false
 #        poetry install poetry.lock
-    - name: Test with flake8
-      run: |
-        python -m flake8 backend
+#    - name: Test with flake8
+#      run: |
+#        python -m flake8 backend
   build_and_push_to_docker_hub:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
