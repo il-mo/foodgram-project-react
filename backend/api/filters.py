@@ -1,6 +1,5 @@
 import django_filters
 from django_filters.rest_framework import filters
-from rest_framework.exceptions import ParseError
 
 from recipe.models import Ingredient, Recipe, Tag
 from users.models import User
