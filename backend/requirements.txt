@@ -37,4 +37,5 @@ sqlparse==0.4.2
 uritemplate==3.0.1
 urllib3==1.26.7
 django-colorfield==0.6.3
+
 flake8==4.0.1
