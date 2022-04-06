@@ -1,8 +1,8 @@
 from django.contrib import admin
 
 from users.models import Follow
-from .models import (Favorite, Ingredient, IngredientInRecipe, Recipe,
-                     Tag)
+
+from .models import Favorite, Ingredient, IngredientInRecipe, Recipe, Tag
 
 
 @admin.register(Ingredient)
