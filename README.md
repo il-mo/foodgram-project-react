@@ -1,4 +1,5 @@
 # Проект Foodgram
+![example workflow](https://github.com/il-mo/foodgram-project-react/actions/workflows/main.yml/badge.svg)  
 Проект доступен по [адресу](http://51.250.7.207/recipes)
        
 Сайт для публикации и поиска рецептов.
@@ -64,20 +65,21 @@ scp nginx.conf <username>@<host>:/home/<username>/nginx.conf
 
 ## Запуск проекта 
 
-* После успешного деплоя, на сервере выполните команды:
-    - Соберите статические файлы:
-    ```
-    sudo docker-compose exec backend python manage.py collectstatic --noinput
-    ```
-    - Примените миграции:
-    ```
-    sudo docker-compose exec backend python manage.py migrate --noinput
-    ```
-    - Создать суперпользователя Django:
-    ```
-    sudo docker-compose exec backend python manage.py createsuperuser
-    ```
-    - Проект будет доступен по вашему IP
+#### После успешного деплоя, на сервере выполните команды:
+
+* Соберите статические файлы:
+   ```
+   sudo docker-compose exec backend python manage.py collectstatic --noinput
+   ```
+* Примените миграции:
+  ```
+  sudo docker-compose exec backend python manage.py migrate --noinput
+  ```
+* Создайте суперпользователя:
+  ```
+  sudo docker-compose exec backend python manage.py createsuperuser
+  ```
+* Проект будет доступен по вашему IP
   
 ## Cтек технологий
 
