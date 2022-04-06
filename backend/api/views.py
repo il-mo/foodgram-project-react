@@ -158,7 +158,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
                         {
                             f'{ingredient.ingredient.id}': {
                                 'name': ingredient.ingredient.name,
-                                'measurement_unit': ingredient.ingredient.measurement_unit,
+                                'measurement_unit':
+                                    ingredient.ingredient.measurement_unit,
                                 'amount': ingredient.amount,
                             }
                         }
