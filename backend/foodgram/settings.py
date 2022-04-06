@@ -98,11 +98,11 @@ REST_FRAMEWORK = {
 
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
-    ],
+        ],
 
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ],
+        ],
 }
 
 AUTH_USER_MODEL = 'users.User'
