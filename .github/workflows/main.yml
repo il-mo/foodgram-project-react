@@ -30,9 +30,9 @@ jobs:
   build_and_push_to_docker_hub:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
-#    defaults:
-#      run:
-#        working-directory: ./backend
+    defaults:
+      run:
+        working-directory: ./backend
 #    needs: tests
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     steps:
@@ -47,7 +47,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
-        working-directory: ./backend
         with:
           context: ./backend
           file: ./backend/Dockerfile
