@@ -20,8 +20,7 @@ jobs:
       uses: snok/install-poetry@v1
 
     - name: Install dependencies
-      working-directory: ./backend
-      run: poetry install  --no-interaction --no-root
+      run: cd backend && poetry install  --no-interaction --no-root
     - name: Test with flake8
       run: |
         poetry run flake8
