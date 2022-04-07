@@ -8,6 +8,9 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
 
     steps:
     - uses: actions/checkout@v2
@@ -17,11 +20,9 @@ jobs:
         python-version: 3.7.9
 
     - name: Install Poetry
-      working-directory: ./backend
       uses: snok/install-poetry@v1
 
     - name: Install dependencies
-      working-directory: ./backend
       run: poetry install  --no-interaction --no-root
     - name: Test with flake8
       run: |
