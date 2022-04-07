@@ -33,7 +33,7 @@ jobs:
 #    defaults:
 #      run:
 #        working-directory: ./backend
-    needs: tests
+#    needs: tests
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     steps:
       - name: Check out the repo
