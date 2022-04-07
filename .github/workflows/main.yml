@@ -17,10 +17,12 @@ jobs:
         python-version: 3.7.9
 
     - name: Install Poetry
+      working-directory: ./backend
       uses: snok/install-poetry@v1
 
     - name: Install dependencies
-      run: cd backend && poetry install  --no-interaction --no-root
+      working-directory: ./backend
+      run: poetry install  --no-interaction --no-root
     - name: Test with flake8
       run: |
         poetry run flake8
