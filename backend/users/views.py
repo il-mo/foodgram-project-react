@@ -22,37 +22,47 @@ class CustomUserViewSet(UserViewSet):
         methods=['POST', 'DELETE'],
     )
     def subscribe(self, request, id=None):
-        user = request.user
         author = get_object_or_404(User, id=id)
+
         if request.method == 'POST':
-            if user == author:
+            author = get_object_or_404(User, id=id)
+            if self.request.user.id == author:
                 return Response(
-                    {'errors': 'Нельзя подписаться на себя :('},
+                    {'errors': 'Вы не можете подписываться на самого себя'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            if Follow.objects.filter(user=user, author=author).exists():
+            if Follow.objects.filter(
+                author_id=author.id, user_id=self.request.user.id
+            ).exists():
                 return Response(
-                    {'errors': 'Вы уже подписаны на данного пользователя :('},
+                    {'errors': 'Вы уже подписаны на данного пользователя'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            follow = Follow.objects.create(user=user, author=author)
-            serializer = FollowSerializer(follow, context={'request': request})
+            Follow.objects.create(
+                author_id=author.id, user_id=self.request.user.id
+            )
+            serializer = FollowSerializer(author, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         if request.method == 'DELETE':
-            if user == author:
+            if self.request.user.id == author:
                 return Response(
                     {'errors': 'Вы не можете отписываться от самого себя'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            follow = Follow.objects.filter(user=user, author=author)
+            follow = Follow.objects.filter(
+                author_id=author.id, user_id=self.request.user.id
+            )
             if follow.exists():
                 follow.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
+                return Response(
+                    {'status': 'Вы успешно отписались от пользователя'},
+                    status=status.HTTP_200_OK,
+                )
 
             return Response(
-                {'errors': 'Вы уже отписались'},
+                {'errors': 'Вы не подписаны на данного пользователя'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
