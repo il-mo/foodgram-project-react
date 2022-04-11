@@ -8,18 +8,19 @@ from .models import Favorite, Ingredient, IngredientInRecipe, Recipe, Tag
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
     list_display = ('pk', 'name', 'measurement_unit')
+    search_fields = ('name',)
 
 
 @admin.register(IngredientInRecipe)
 class IngredientInRecipeAdmin(admin.ModelAdmin):
-    list_display = ('ingredient', 'recipe', 'amount')
-    search_fields = ('ingredient',)
+    autocomplete_fields = ('recipe', 'ingredient')
+    list_display = ('amount',)
     list_filter = ('ingredient',)
 
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    fields = ['author', 'name', 'text', 'tags', 'image', 'cooking_time']
+    fields = ('author', 'name', 'text', 'tags', 'image', 'cooking_time')
     list_display = (
         'pk',
         'name',
@@ -29,6 +30,7 @@ class RecipeAdmin(admin.ModelAdmin):
         'author',
         'favorites',
     )
+    search_fields = ('name',)
 
     @staticmethod
     def favorites(obj):
@@ -49,4 +51,5 @@ class FollowAdmin(admin.ModelAdmin):
 
 @admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'user', 'recipe', 'shopping_cart', 'favorite')
+    autocomplete_fields = ('recipe',)
+    list_display = ('pk', 'user', 'shopping_cart', 'favorite')

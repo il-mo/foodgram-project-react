@@ -2,6 +2,7 @@ from django.db.models import F
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 
 from recipe.models import Favorite, Ingredient, IngredientInRecipe, Recipe, Tag
 from users.models import Follow, User
@@ -80,7 +81,29 @@ class RecipeSerializer(serializers.ModelSerializer):
             return recipe.shopping_cart
         return False
 
+    def validate(self, data):
+        ingredients = self.initial_data.get('ingredients')
+        if not ingredients:
+            raise serializers.ValidationError(
+                {'error': 'Необходим хотя бы 1 ингредиент'}
+            )
+        ingredient_list = []
+        for ingredient_item in ingredients:
+            ingredient = get_object_or_404(
+                Ingredient, id=ingredient_item['id']
+            )
+            if ingredient in ingredient_list:
+                raise serializers.ValidationError(
+                    'Ингридиенты должны быть уникальными'
+                )
+            ingredient_list.append(ingredient)
+
+        data['ingredients'] = ingredients
+        return data
+
     def create(self, validated_data):
+
+        ingredients_data = validated_data.pop('ingredients')
         tag_ids = Tag.objects.all().values_list('id', flat=True)
         tag_id = self.context.get('request').data['tags']
 
@@ -92,7 +115,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 
         recipe = super(RecipeSerializer, self).create(validated_data)
 
-        for ingredient in self.initial_data['ingredients']:
+        for ingredient in ingredients_data:
             try:
                 get_ingredient = Ingredient.objects.get(id=ingredient['id'])
                 IngredientInRecipe.objects.update_or_create(
@@ -141,8 +164,8 @@ class FollowSerializer(serializers.ModelSerializer):
             count = int(self.context.GET['recipes_limit'])
             recipes = (
                 Recipe.objects.filter(author_id=obj.id)
-                .all()
-                .prefetch_related(count)
+                    .all()
+                    .prefetch_related(count)
             )
         except AttributeError:
             recipes = Recipe.objects.filter(author_id=obj.id).all()
