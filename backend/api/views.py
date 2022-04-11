@@ -135,6 +135,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             raise ValidationError(
                 detail={'error': ['Ваш список покупок пуст :(']}
             )
+
         for recipe in recipes:
             ingredients = IngredientInRecipe.objects.filter(
                 recipe=recipe
