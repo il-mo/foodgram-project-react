@@ -95,8 +95,6 @@ class IngredientInRecipe(models.Model):
         on_delete=models.CASCADE,
         related_name='ingredient_in_recipe',
     )
-    #TODO: Если в поле "кол-во ингредиента" ввести не число,
-    # то запрос упадет, думаю нужно написать валидатор
     amount = models.PositiveSmallIntegerField(
         verbose_name="Количество ингредиентов",
         validators=(

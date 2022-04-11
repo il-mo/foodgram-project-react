@@ -21,6 +21,18 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
 
 
+class IngredientInRecipeSerializer(serializers.ModelSerializer):
+    amount = serializers.SerializerMethodField()
+
+    class Meta:
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+        model = Ingredient
+        read_only_fields = ['id', 'name', 'measurement_unit']
+
+        def get_amount(self, obj):
+            return obj.ingredientinrecipe.values('amount')[0].get('amount')
+
+
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         fields = '__all__'
@@ -164,8 +176,8 @@ class FollowSerializer(serializers.ModelSerializer):
             count = int(self.context.GET['recipes_limit'])
             recipes = (
                 Recipe.objects.filter(author_id=obj.id)
-                    .all()
-                    .prefetch_related(count)
+                .all()
+                .prefetch_related(count)
             )
         except AttributeError:
             recipes = Recipe.objects.filter(author_id=obj.id).all()
