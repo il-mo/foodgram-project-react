@@ -2,11 +2,6 @@
 ![example workflow](https://github.com/il-mo/foodgram-project-react/actions/workflows/main.yml/badge.svg)  
 Проект доступен по [адресу](http://51.250.7.207/recipes)
 
-#####Админка
-```
-Логин  - admin
-Пароль - Kresent102
-```
        
 Сайт для публикации и поиска рецептов.
 
