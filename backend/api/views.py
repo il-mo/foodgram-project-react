@@ -3,15 +3,21 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import (IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import (
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
 from rest_framework.response import Response
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.paginations import PagePagination
 from api.permissions import IsAuthor
-from api.serializers import (FavoriteSerializer, IngredientSerializer,
-                             RecipeSerializer, TagSerializer)
+from api.serializers import (
+    FavoriteSerializer,
+    IngredientSerializer,
+    RecipeSerializer,
+    TagSerializer,
+)
 from recipe.models import Favorite, Ingredient, IngredientInRecipe, Recipe, Tag
 from utils.to_pdf import get_pdf
 
@@ -150,8 +156,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                         {
                             f'{ingredient.ingredient.id}': {
                                 'name': ingredient.ingredient.name,
-                                'measurement_unit':
-                                    ingredient.ingredient.measurement_unit,
+                                'measurement_unit': ingredient.ingredient.measurement_unit,
                                 'amount': ingredient.amount,
                             }
                         }
